@@ -4,24 +4,37 @@ import io
 from pptx import Presentation
 from pptx.util import Inches
 
-st.set_page_config(page_title="MedConcept PPTX生成", layout="wide")
+st.set_page_config(page_title="MedConcept PPTX生成システム", layout="wide")
 
-# --- 補助関数：図形やセル内のテキストをフォント維持で置換 ---
+# --- 補助関数：図形やセル内のテキストをフォント維持で置換（分割対策版） ---
 def replace_text_in_shape(item, replacements):
-    # Shape(図形)とCell(表のマス)の両方に対応するための判定
     if not hasattr(item, "text_frame") or item.text_frame is None:
         return
     for paragraph in item.text_frame.paragraphs:
-        for run in paragraph.runs:
-            for old_text, new_text in replacements.items():
-                if old_text in run.text:
-                    # フォントスタイルを維持したまま文字だけ置換
-                    run.text = run.text.replace(old_text, str(new_text))
+        # パワポ特有の「文字分割」対策：段落内の文字を一度すべて合体させる
+        p_text = "".join(run.text for run in paragraph.runs)
+        
+        replaced_any = False
+        for old_text, new_text in replacements.items():
+            if old_text in p_text:
+                p_text = p_text.replace(old_text, str(new_text))
+                replaced_any = True
+                
+        if replaced_any:
+            # 置換があった場合、最初のブロックに合体させたテキストを入れ、残りのブロックを空にする
+            # これによりフォントや文字色（最初の文字のスタイル）が全体に維持されます
+            if len(paragraph.runs) > 0:
+                paragraph.runs[0].text = p_text
+                for i in range(1, len(paragraph.runs)):
+                    paragraph.runs[i].text = ""
 
 # --- 補助関数：不要な図形を完全に削除 ---
 def delete_shape(shape):
-    sp_tree = shape.element.getparent()
-    sp_tree.remove(shape.element)
+    try:
+        sp_tree = shape.element.getparent()
+        sp_tree.remove(shape.element)
+    except:
+        pass
 
 # --- メイン処理関数 ---
 def generate_pptx(json_data, uploaded_images):
@@ -66,14 +79,14 @@ def generate_pptx(json_data, uploaded_images):
                 if shape.shape_type == 6: # グループ図形
                     process_shapes(shape.shapes)
                 elif hasattr(shape, "text_frame") and shape.text_frame is not None:
-                    # 4つ目がない場合、{{cb4}}や{{ca4}}を含む図形を削除候補に追加
+                    # 分割対策：段落の文字を合体させてから判定
                     delete_flag = False
                     for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if "{{cb4}}" in run.text and len(cb) < 4:
-                                delete_flag = True
-                            if "{{ca4}}" in run.text and len(ca) < 4:
-                                delete_flag = True
+                        p_text = "".join(run.text for run in paragraph.runs)
+                        if "{{cb4}}" in p_text and len(cb) < 4:
+                            delete_flag = True
+                        if "{{ca4}}" in p_text and len(ca) < 4:
+                            delete_flag = True
                     
                     if delete_flag:
                         shapes_to_delete.append(shape)
@@ -89,10 +102,7 @@ def generate_pptx(json_data, uploaded_images):
 
         # マークした図形を削除
         for shape in shapes_to_delete:
-            try:
-                delete_shape(shape)
-            except Exception:
-                pass
+            delete_shape(shape)
 
     # 3. 画像のレイアウト配置（スライド6〜10 / インデックス5〜9）
     slide_indices = {"A案": 5, "B案": 6, "C案": 7, "D案": 8, "E案": 9}
@@ -138,7 +148,6 @@ with tab1:
     uploaded_images = {}
     plans = ["A案", "B案", "C案", "D案", "E案"]
     
-    # 横に並べると見づらい場合は、st.columnsを適宜調整します
     ui_cols = st.columns(5)
     for i, plan in enumerate(plans):
         with ui_cols[i]:
@@ -157,9 +166,7 @@ with tab2:
             st.error("エラー: JSONデータを入力してください。")
         else:
             try:
-                # JSONのパース
                 json_data = json.loads(json_text)
-                
                 with st.spinner("PowerPointを生成中..."):
                     ppt_stream = generate_pptx(json_data, uploaded_images)
                     
