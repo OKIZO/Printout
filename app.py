@@ -6,11 +6,12 @@ from pptx.util import Inches
 
 st.set_page_config(page_title="MedConcept PPTX生成", layout="wide")
 
-# --- 補助関数：図形内のテキストをフォント維持で置換 ---
-def replace_text_in_shape(shape, replacements):
-    if not shape.has_text_frame:
+# --- 補助関数：図形やセル内のテキストをフォント維持で置換 ---
+def replace_text_in_shape(item, replacements):
+    # Shape(図形)とCell(表のマス)の両方に対応するための判定
+    if not hasattr(item, "text_frame") or item.text_frame is None:
         return
-    for paragraph in shape.text_frame.paragraphs:
+    for paragraph in item.text_frame.paragraphs:
         for run in paragraph.runs:
             for old_text, new_text in replacements.items():
                 if old_text in run.text:
@@ -64,7 +65,7 @@ def generate_pptx(json_data, uploaded_images):
             for shape in shapes:
                 if shape.shape_type == 6: # グループ図形
                     process_shapes(shape.shapes)
-                elif shape.has_text_frame:
+                elif hasattr(shape, "text_frame") and shape.text_frame is not None:
                     # 4つ目がない場合、{{cb4}}や{{ca4}}を含む図形を削除候補に追加
                     delete_flag = False
                     for paragraph in shape.text_frame.paragraphs:
@@ -94,10 +95,9 @@ def generate_pptx(json_data, uploaded_images):
                 pass
 
     # 3. 画像のレイアウト配置（スライド6〜10 / インデックス5〜9）
-    # A案=5, B案=6, C案=7, D案=8, E案=9
     slide_indices = {"A案": 5, "B案": 6, "C案": 7, "D案": 8, "E案": 9}
     
-    # 2行3列のグリッド計算用の設定（16:9スライド基準）
+    # グリッド計算用の設定（16:9スライド基準）
     margin_x, margin_y = Inches(0.5), Inches(1.5)
     cell_w, cell_h = Inches(3.0), Inches(2.0)
     cols = 3
@@ -114,7 +114,6 @@ def generate_pptx(json_data, uploaded_images):
                 
                 img_stream = io.BytesIO(img_file.read())
                 try:
-                    # widthだけ指定し、アスペクト比を自動維持して挿入
                     slide.shapes.add_picture(img_stream, x, y, width=cell_w - Inches(0.2))
                 except Exception as e:
                     st.warning(f"{plan_name}の画像挿入に失敗しました: {e}")
@@ -126,44 +125,54 @@ def generate_pptx(json_data, uploaded_images):
     return ppt_stream
 
 # --- UI構築 ---
-st.title("MedConcept - 企画書PPTX自動生成")
-st.markdown("STEP7の画像とSTEP8のJSONデータを入力して、パワポを生成します。")
+st.title("MedConcept - 企画書PPTX生成システム")
 
-# STEP 7: 画像アップロード
-st.header("STEP 7: 画像アップロード (各案5〜6枚推奨)")
-uploaded_images = {}
-cols = st.columns(5)
-plans = ["A案", "B案", "C案", "D案", "E案"]
+# タブを作成して画面を分ける
+tab1, tab2 = st.tabs(["🖼️ STEP 7: 画像アップロード", "📝 STEP 8: テキスト入力＆出力"])
 
-for i, plan in enumerate(plans):
-    with cols[i]:
-        st.subheader(plan)
-        uploaded_images[plan] = st.file_uploader(f"{plan}の画像", accept_multiple_files=True, type=["png", "jpg", "jpeg"], key=plan)
+# ===== タブ1: 画像アップロード =====
+with tab1:
+    st.header("STEP 7: 画像アップロード")
+    st.markdown("各デザイン案の画像をアップロードしてください。（各案5〜6枚推奨）")
+    
+    uploaded_images = {}
+    plans = ["A案", "B案", "C案", "D案", "E案"]
+    
+    # 横に並べると見づらい場合は、st.columnsを適宜調整します
+    ui_cols = st.columns(5)
+    for i, plan in enumerate(plans):
+        with ui_cols[i]:
+            st.subheader(plan)
+            uploaded_images[plan] = st.file_uploader(f"{plan}の画像", accept_multiple_files=True, type=["png", "jpg", "jpeg"], key=plan)
 
-# STEP 8: JSONテキスト入力
-st.header("STEP 8: JSONデータ入力")
-json_text = st.text_area("HTMLアプリで生成されたJSONデータを貼り付けてください", height=300)
+# ===== タブ2: JSON入力＆パワポ生成 =====
+with tab2:
+    st.header("STEP 8: JSONデータ入力 ＆ 企画書生成")
+    st.markdown("HTMLアプリで生成されたJSONデータを貼り付け、「企画書を作成」ボタンを押してください。")
+    
+    json_text = st.text_area("JSONデータを貼り付け", height=300)
 
-if st.button("📊 企画書を作成", type="primary"):
-    if not json_text.strip():
-        st.error("JSONデータを入力してください。")
-    else:
-        try:
-            # JSONのパース
-            json_data = json.loads(json_text)
-            
-            with st.spinner("PowerPointを生成中..."):
-                ppt_stream = generate_pptx(json_data, uploaded_images)
+    if st.button("📊 企画書を作成", type="primary", use_container_width=True):
+        if not json_text.strip():
+            st.error("エラー: JSONデータを入力してください。")
+        else:
+            try:
+                # JSONのパース
+                json_data = json.loads(json_text)
                 
-            st.success("PowerPointの生成が完了しました！")
-            st.download_button(
-                label="📥 proposal.pptx をダウンロード",
-                data=ppt_stream,
-                file_name=f"proposal_{json_data.get('itemName', 'untitled')}.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            )
-            
-        except json.JSONDecodeError:
-            st.error("JSONのフォーマットが正しくありません。コピー忘れや余分な文字がないか確認してください。")
-        except Exception as e:
-            st.error(f"エラーが発生しました: {e}")
+                with st.spinner("PowerPointを生成中..."):
+                    ppt_stream = generate_pptx(json_data, uploaded_images)
+                    
+                st.success("🎉 PowerPointの生成が完了しました！")
+                st.download_button(
+                    label="📥 proposal.pptx をダウンロード",
+                    data=ppt_stream,
+                    file_name=f"proposal_{json_data.get('itemName', 'untitled')}.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True
+                )
+                
+            except json.JSONDecodeError:
+                st.error("エラー: JSONのフォーマットが正しくありません。コピー忘れや余分な文字がないか確認してください。")
+            except Exception as e:
+                st.error(f"予期せぬエラーが発生しました: {e}")
