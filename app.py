@@ -105,45 +105,62 @@ def generate_pptx(json_data, uploaded_images):
 
 # --- UI構築（左右2カラムレイアウト） ---
 
-# 余白を詰めるためのCSS
+# 余白とファイルリストの広がりを抑えるCSS
 st.markdown("""
     <style>
         .block-container { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-        h1 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
-        h2 { font-size: 1.3rem !important; margin-bottom: 0.5rem !important;}
-        .stMarkdown p { font-size: 0.9rem; margin-bottom: 0.5rem !important;}
+        h1 { font-size: 1.6rem !important; margin-bottom: 1rem !important; }
+        h2 { font-size: 1.2rem !important; margin-bottom: 0.2rem !important;}
+        .stMarkdown p { font-size: 0.85rem; margin-bottom: 0.2rem !important;}
+        
+        /* ファイルアップローダー周りの隙間を削る */
+        [data-testid="stFileUploader"] { margin-bottom: 0rem; }
+        
+        /* ドロップゾーン（点線の枠）を薄くする */
+        [data-testid="stFileUploadDropzone"] {
+            padding: 0.5rem !important;
+            min-height: 2rem !important;
+        }
+        
+        /* アップロードされたファイルのリストを極限まで小さく薄くする */
+        [data-testid="stUploadedFile"] {
+            padding: 0.1rem 0.5rem !important;
+            min-height: 1.5rem !important;
+            margin-bottom: 0.1rem !important;
+        }
+        [data-testid="stUploadedFile"] * {
+            font-size: 0.7rem !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("PPTX生成システム")
 
-# 画面を左右に2分割（間隔を少し広めに取る）
 col1, col2 = st.columns(2, gap="large")
 
 # ===== 左カラム：画像アップロード =====
 with col1:
     st.header("🖼️ 画像アップロード")
-    st.markdown("各案の画像（5〜6枚推奨）をアップロードしてください。")
+    st.markdown("各案の画像を枠内にドラッグ＆ドロップしてください。")
 
     uploaded_images = {}
     plans = ["A案", "B案", "C案", "D案", "E案"]
 
     for plan in plans:
-        with st.expander(f"📁 {plan} の画像を選択"):
-            uploaded_images[plan] = st.file_uploader(
-                f"{plan}の画像", 
-                accept_multiple_files=True, 
-                type=["png", "jpg", "jpeg"], 
-                key=plan,
-                label_visibility="collapsed"
-            )
+        # st.expanderを外し、直接アップローダーを表示
+        uploaded_images[plan] = st.file_uploader(
+            f"📁 {plan}", 
+            accept_multiple_files=True, 
+            type=["png", "jpg", "jpeg"], 
+            key=plan
+        )
 
 # ===== 右カラム：JSON入力＆パワポ生成 =====
 with col2:
     st.header("📝 企画書生成")
     st.markdown("左側のアプリからコピーしたJSONデータを貼り付けます。")
 
-    # テキストエリアの高さを、左のメニュー群と合うように少し高め（280）に設定
+    # テキストエリアの高さを、左のメニュー群と合うように設定
     json_text = st.text_area("JSONデータを貼り付け", height=280, label_visibility="collapsed", placeholder="ここにJSONデータを貼り付けてください")
 
     if st.button("📊 企画書パワーポイントを作成", type="primary", use_container_width=True):
