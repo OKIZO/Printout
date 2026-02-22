@@ -94,6 +94,15 @@ def generate_pptx(json_data, uploaded_images):
                 
                 img_stream = io.BytesIO(img_file.read())
                 try:
+                    slide.shapes.add_picture(img_stream, x, y, width=cell_w - Inches(0.2))
+                except Exception as e:
+                    st.warning(f"{plan_name}の画像挿入に失敗しました: {e}")
+
+    ppt_stream = io.BytesIO()
+    prs.save(ppt_stream)
+    ppt_stream.seek(0)
+    return ppt_stream
+
 # --- UI構築（左右2カラムレイアウト） ---
 
 # 余白とファイルリストの広がりを抑えるCSS（文字被り修正版）
