@@ -105,10 +105,10 @@ def generate_pptx(json_data, uploaded_images):
 
 # --- UI構築（左右2カラムレイアウト） ---
 
-# 余白とファイルリストの広がりを抑えるCSS
+# 余白とファイルリストの広がりを極限まで抑えるCSS
 st.markdown("""
     <style>
-        .block-container { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+        .block-container { padding-top: 1rem; padding-bottom: 1rem; }
         h1 { font-size: 1.6rem !important; margin-bottom: 1rem !important; }
         h2 { font-size: 1.2rem !important; margin-bottom: 0.2rem !important;}
         .stMarkdown p { font-size: 0.85rem; margin-bottom: 0.2rem !important;}
@@ -116,20 +116,47 @@ st.markdown("""
         /* ファイルアップローダー周りの隙間を削る */
         [data-testid="stFileUploader"] { margin-bottom: 0rem; }
         
-        /* ドロップゾーン（点線の枠）を薄くする */
+        /* ドロップゾーン（点線の枠）を極限まで薄くする */
         [data-testid="stFileUploadDropzone"] {
-            padding: 0.5rem !important;
-            min-height: 2rem !important;
+            padding: 0.2rem !important;
+            min-height: 1.5rem !important;
+        }
+        [data-testid="stFileUploadDropzone"] * {
+            font-size: 0.75rem !important;
+            margin: 0 !important;
+        }
+        [data-testid="stFileUploadDropzone"] svg {
+            display: none; /* ドロップゾーンの雲のアイコンを消す */
         }
         
-        /* アップロードされたファイルのリストを極限まで小さく薄くする */
+        /* ▼ アップロードされたファイルのリストが下に伸びないようにする ▼ */
+        /* リスト全体を小さなスクロール枠に閉じ込める */
+        [data-testid="stFileUploader"] > section {
+            max-height: 60px !important;  /* 高さを固定（約2ファイル分） */
+            overflow-y: auto !important;  /* はみ出たらスクロール */
+        }
+        
+        /* 各ファイルの表示を極小化 */
         [data-testid="stUploadedFile"] {
-            padding: 0.1rem 0.5rem !important;
-            min-height: 1.5rem !important;
+            padding: 0.1rem 0.4rem !important;
+            min-height: 1rem !important;
             margin-bottom: 0.1rem !important;
+            border-radius: 2px !important;
         }
         [data-testid="stUploadedFile"] * {
-            font-size: 0.7rem !important;
+            font-size: 0.65rem !important;
+            line-height: 1 !important;
+        }
+        
+        /* ファイルサイズ（1.2MBなど）の表記を消す */
+        [data-testid="stUploadedFile"] small {
+            display: none !important;
+        }
+        
+        /* 削除ボタンのサイズ調整 */
+        [data-testid="stUploadedFile"] button {
+            padding: 0 !important;
+            transform: scale(0.7); /* ボタンを小さく */
         }
     </style>
 """, unsafe_allow_html=True)
