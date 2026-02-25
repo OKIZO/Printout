@@ -114,38 +114,4 @@ def generate_pptx(json_data, uploaded_images):
         "{{itemName}}": json_data.get("itemName", ""),
         "{{spec}}": json_data.get("spec", ""),
         "{{target}}": json_data.get("target", ""),
-        "{{scene}}": json_data.get("scene", ""),
-        "{{objectiveA}}": json_data.get("objectiveA", ""),
-        "{{objectiveB}}": json_data.get("objectiveB", ""),
-        "{{before}}": json_data.get("before", ""),
-        "{{after}}": json_data.get("after", ""),
-        "{{concept}}": json_data.get("concept", ""),
-        "{{brandInfo}}": brand_info,
-        "{{designExterior}}": "、".join(json_data.get("designExterior", [])),
-        "{{functional}}": "、".join(json_data.get("functional", [])),
-        "{{toneManner}}": "\n".join(json_data.get("toneManner", [])),
-    }
-
-    cb = json_data.get("changeTypesBefore", [])
-    ca = json_data.get("changeTypesAfter", [])
-    
-    for i in range(4):
-        replacements[f"{{{{cb{i+1}}}}}"] = cb[i] if i < len(cb) else ""
-        replacements[f"{{{{ca{i+1}}}}}"] = ca[i] if i < len(ca) else ""
-
-    for slide in prs.slides:
-        def process_shapes(shapes):
-            for shape in shapes:
-                if shape.shape_type == 6:
-                    process_shapes(shape.shapes)
-                elif hasattr(shape, "text_frame") and shape.text_frame is not None:
-                    replace_text_in_shape(shape, replacements)
-                elif shape.has_table:
-                    for row in shape.table.rows:
-                        for cell in row.cells:
-                            replace_text_in_shape(cell, replacements)
-        process_shapes(slide.shapes)
-
-    # ▼▼▼ 修正箇所：画像を貼り付けるスライドの番号（0始まり）を全体的に+1しました ▼▼▼
-    slide_indices = {"A案": 6, "B案": 7, "C案": 8, "D案": 9, "E案": 10}
-    margin_x, margin
+        "{{scene}}": json_data.get("
