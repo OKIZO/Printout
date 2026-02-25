@@ -146,8 +146,8 @@ def generate_pptx(json_data, uploaded_images):
                             replace_text_in_shape(cell, replacements)
         process_shapes(slide.shapes)
 
-    # ▼▼▼ 修正箇所：画像を貼り付けるスライドの番号をさらに1つ後ろにズラしました ▼▼▼
-    slide_indices = {"A案": 7, "B案": 8, "C案": 9, "D案": 10, "E案": 11}
+    # ▼▼▼ 修正箇所：画像を貼り付けるスライドの番号（0始まり）を全体的に+1しました ▼▼▼
+    slide_indices = {"A案": 6, "B案": 7, "C案": 8, "D案": 9, "E案": 10}
     margin_x, margin_y = Inches(0.5), Inches(1.5)
     cell_w, cell_h = Inches(3.0), Inches(2.0)
     cols = 3
